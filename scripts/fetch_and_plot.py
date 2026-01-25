@@ -227,10 +227,43 @@ def main():
         plt.savefig(svg_path, format='svg')
         print(f"Saved plot to {svg_path}")
         
+        # Update README.md with timestamp
+        update_readme_timestamp()
+        
     except Exception as e:
         print(f"Error processing CSV or plotting: {e}")
         import traceback
         traceback.print_exc()
+
+def update_readme_timestamp():
+    import pytz
+    from datetime import datetime
+    
+    # Get current time in Taipei
+    taipei_tz = pytz.timezone('Asia/Taipei')
+    now = datetime.now(taipei_tz)
+    timestamp_str = now.strftime("Update time: %Y-%m-%d %H:%M:%S CST")
+    
+    readme_path = "README.md"
+    if not os.path.exists(readme_path):
+        return
+        
+    with open(readme_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    
+    # Target pattern: Any "Update time: ..." line or the line before the SVG
+    svg_marker = "![六都購置住宅貸款違約率]"
+    
+    if "Update time:" in content:
+        # Replace existing timestamp
+        new_content = re.sub(r"Update time: \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} CST", timestamp_str, content)
+    else:
+        # Insert before the SVG marker
+        new_content = content.replace(svg_marker, f"{timestamp_str}\n\n{svg_marker}")
+    
+    with open(readme_path, "w", encoding="utf-8") as f:
+        f.write(new_content)
+    print(f"Updated README.md with timestamp: {timestamp_str}")
 
 if __name__ == "__main__":
     main()
