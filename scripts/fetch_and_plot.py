@@ -154,8 +154,22 @@ def main():
     # Pivot for plotting
     pivot_df = df_filtered.pivot_table(index=time_col, columns=region_col, values=rate_col)
     
+    # Fix sorting of the index (Time)
+    # Default string sort puts '100Q1' before '97Q1'. We need numeric sort of the year.
+    def parse_quarter(q_str):
+        # Expect format like "97Q1" or "100Q1"
+        match = re.match(r'(\d+)Q(\d+)', str(q_str))
+        if match:
+            return int(match.group(1)), int(match.group(2))
+        return 0, 0 # Fallback
+
+    # Get current index as list and sort it
+    sorted_index = sorted(pivot_df.index, key=parse_quarter)
+    # Reindex the pivot table
+    pivot_df = pivot_df.reindex(sorted_index)
+    
     # Plotting
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(14, 8)) # Increased size for better visibility of long x-axis
     plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei', 'sans-serif'] 
     plt.rcParams['axes.unicode_minus'] = False
     
