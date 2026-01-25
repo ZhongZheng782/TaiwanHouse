@@ -169,18 +169,38 @@ def main():
     pivot_df = pivot_df.reindex(sorted_index)
     
     # Plotting
-    plt.figure(figsize=(14, 8)) # Increased size for better visibility of long x-axis
+    # Create 6 subplots sharing the x-axis
+    cities = pivot_df.columns.tolist()
+    fig, axes = plt.subplots(nrows=len(cities), ncols=1, sharex=True, figsize=(12, 18))
+    
     plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei', 'sans-serif'] 
     plt.rcParams['axes.unicode_minus'] = False
     
-    pivot_df.plot(marker='o', ax=plt.gca())
+    # Colors for each city
+    colors = plt.cm.tab10(range(len(cities)))
     
-    plt.title('Quarterly Housing Loan Default Rate - Six Special Municipalities\n(六都購置住宅貸款違約率)')
-    plt.xlabel('Quarter')
-    plt.ylabel('Default Rate (%)')
-    plt.grid(True)
-    plt.legend(title='City')
-    plt.tight_layout()
+    for i, city in enumerate(cities):
+        ax = axes[i]
+        # Plot data for this city
+        ax.plot(pivot_df.index, pivot_df[city], marker='o', linestyle='-', color=colors[i], label=city)
+        
+        ax.set_title(city, loc='left', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Default Rate (%)')
+        ax.grid(True, which='both', linestyle='--', alpha=0.7)
+        ax.legend(loc='upper right')
+        
+        # Add values on points for better readability
+        # for x, y in zip(pivot_df.index, pivot_df[city]):
+        #     ax.annotate(f"{y}", (x, y), textcoords="offset points", xytext=(0,10), ha='center', fontsize=8)
+
+    # Set common X-axis label on the last subplot
+    axes[-1].set_xlabel('Quarter')
+    
+    # Rotate x-axis labels for better visibility
+    plt.xticks(rotation=45)
+    
+    fig.suptitle('Quarterly Housing Loan Default Rate - Six Special Municipalities\n(六都購置住宅貸款違約率)', fontsize=16)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.97]) # Adjust for suptitle
     
     svg_path = os.path.join(SVG_DIR, "six_cities_default_rate.svg")
     plt.savefig(svg_path, format='svg')
