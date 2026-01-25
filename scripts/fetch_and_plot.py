@@ -82,19 +82,53 @@ def main():
         csv_path = os.path.join(DATA_DIR, "housing_loan_default_rate.csv")
         
         # Generate sample data for 6 cities over recent quarters
+        # Simulate realistic trends based on user feedback:
+        # - Year 97-98 (2008-2009): Financial Crisis peak (~1.39%)
+        # - Recent years: Historical low (~0.06% - 0.15%)
+        # - Taipei usually higher (~0.13%), Taoyuan lower (~0.05%)
+        
         quarters = []
-        for y in range(95, 116): # Years 95 to 115 (approx current)
+        for y in range(95, 116): # Years 95 to 115
             for q in range(1, 5):
-                quarters.append(f"{y}Q{q}")
+                quarters.append((y, q))
         
         cities = ['臺北市', '新北市', '桃園市', '臺中市', '臺南市', '高雄市']
         
         data = []
-        for q in quarters:
+        for y, q in quarters:
+            # Base trend calculation
+            if 97 <= y <= 99:
+                # Crisis peak curve
+                if y == 98:
+                    base_rate = 1.3 + random.uniform(-0.1, 0.2)
+                else:
+                    base_rate = 0.8 + random.uniform(-0.1, 0.1)
+            elif y < 97:
+                # Pre-crisis
+                base_rate = 0.6 + random.uniform(-0.1, 0.1)
+            else:
+                # Post-crisis decay to low
+                decay = max(0, (115 - y) / 20) * 0.1 # Slow decay
+                base_rate = 0.08 + decay + random.uniform(-0.02, 0.03)
+                
             for city in cities:
-                # Random rate between 0.05 and 0.25 %
-                rate = round(random.uniform(0.05, 0.25), 2)
-                data.append({'季別': q, '縣市別': city, '購置住宅貸款違約率': f"{rate}%"})
+                city_rate = base_rate
+                
+                # Apply city modifiers
+                if city == '臺北市':
+                    city_rate *= 1.4 # Higher
+                elif city == '桃園市':
+                    city_rate *= 0.7 # Lower
+                elif city in ['臺中市', '臺南市', '高雄市']:
+                    city_rate *= 0.9 # Slightly lower
+                
+                # Add some randomness
+                city_rate += random.uniform(-0.02, 0.02)
+                
+                # Ensure positive and plausible
+                city_rate = max(0.01, round(city_rate, 2))
+                
+                data.append({'季別': f"{y}Q{q}", '縣市別': city, '購置住宅貸款違約率': f"{city_rate}%"})
         
         df_sample = pd.DataFrame(data)
         df_sample.to_csv(csv_path, index=False, encoding='utf-8-sig')
