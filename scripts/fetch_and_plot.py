@@ -165,20 +165,24 @@ def main():
         region_col = [c for c in df.columns if '縣市' in c or 'City' in c or 'Region' in c][0]
         rate_col = [c for c in df.columns if '率' in c or 'Rate' in c][0]
 
-        six_cities = ['桃園市', '台北市', '新北市', '台中市', '台南市', '高雄市']
+        # Target cities with new order: Taoyuan, Hsinchu City, Hsinchu County, Miaoli, Taipei, New Taipei, Taichung, Tainan, Kaohsiung
+        target_cities = ['桃園市', '新竹市', '新竹縣', '苗栗縣', '台北市', '新北市', '台中市', '台南市', '高雄市']
+        
         # Normalized names for consistent processing
         normalized_cities = {
-            '臺北市': '台北市', '臺中市': '台中市', '臺南市': '台南市'
+            '臺北市': '台北市', '臺中市': '台中市', '臺南市': '台南市', '臺東縣': '台東縣'
         }
         df[region_col] = df[region_col].replace(normalized_cities)
-        df_filtered = df[df[region_col].isin(six_cities)].copy()
+        df_filtered = df[df[region_col].isin(target_cities)].copy()
         
         df_filtered.loc[:, rate_col] = df_filtered[rate_col].astype(str).str.replace('%', '', regex=False)
         df_filtered.loc[:, rate_col] = pd.to_numeric(df_filtered[rate_col], errors='coerce')
         
         pivot_df = df_filtered.pivot_table(index=time_col, columns=region_col, values=rate_col)
         # Ensure columns follow the specified order
-        pivot_df = pivot_df[six_cities]
+        # Only include columns that actually exist in data
+        existing_cities = [c for c in target_cities if c in pivot_df.columns]
+        pivot_df = pivot_df[existing_cities]
         
         def parse_quarter(q_str):
             match = re.match(r'(\d+)Q(\d+)', str(q_str))
@@ -191,12 +195,14 @@ def main():
         
         # Plotting
         cities = pivot_df.columns.tolist()
-        fig, axes = plt.subplots(nrows=len(cities), ncols=1, sharex=True, figsize=(12, 18))
+        # Adjust figure size for more subplots
+        fig, axes = plt.subplots(nrows=len(cities), ncols=1, sharex=True, figsize=(12, 3 * len(cities)))
         
         plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei', 'sans-serif'] 
         plt.rcParams['axes.unicode_minus'] = False
         
-        colors = plt.cm.tab10(range(len(cities)))
+        # Use a colormap that can handle more unique values
+        colors = plt.cm.tab20(range(len(cities)))
         
         # Calculate global Y-axis limit for consistent scaling
         y_limit = 2.0 # Fixed max Y at 2% as requested
