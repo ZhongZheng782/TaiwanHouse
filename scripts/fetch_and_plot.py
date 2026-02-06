@@ -11,6 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+import matplotlib.font_manager as fm
 
 # Set up paths
 BASE_URL = "https://pip.moi.gov.tw/Publicize/Info/E3030"
@@ -198,7 +199,24 @@ def main():
         # Adjust figure size for more subplots
         fig, axes = plt.subplots(nrows=len(cities), ncols=1, sharex=True, figsize=(12, 3 * len(cities)))
         
-        plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei', 'sans-serif'] 
+        # Configure font for CJK characters
+        # List of preferred CJK fonts
+        cjk_fonts = ['Noto Sans CJK TC', 'Noto Sans CJK JP', 'Noto Sans CJK SC', 'Noto Sans CJK KR',
+                     'Microsoft JhengHei', 'Arial Unicode MS', 'WenQuanYi Micro Hei', 'TakaoPGothic', 'Ubuntu Mono', 'sans-serif']
+
+        # Find a suitable CJK font
+        found_cjk_font = False
+        for font_name in cjk_fonts:
+            if any(font_name in font.name for font in fm.fontManager.ttflist):
+                plt.rcParams['font.sans-serif'] = [font_name, 'sans-serif']
+                found_cjk_font = True
+                break
+
+        if not found_cjk_font:
+            print("Warning: No suitable CJK font found. Chinese characters may not display correctly.")
+            print("Please install a CJK font like 'Noto Sans CJK TC' for optimal display.")
+            plt.rcParams['font.sans-serif'] = ['sans-serif'] # Fallback to generic sans-serif
+
         plt.rcParams['axes.unicode_minus'] = False
         
         # Use a colormap that can handle more unique values
