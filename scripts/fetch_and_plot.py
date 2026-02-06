@@ -253,7 +253,7 @@ def main():
             # Add Risk Alarm Line at 0.3%
             ax.axhline(y=0.3, color='red', linestyle='--', linewidth=1.5, alpha=0.8, label='Risk Alarm (0.3%)')
             
-            ax.set_title(city, loc='left', fontsize=12, fontweight='bold')
+            ax.set_title(city, loc='left', fontsize=16, fontweight='bold')
             ax.set_ylabel('Default Rate (%)')
             ax.set_ylim(0, y_limit) # Set uniform scale
             ax.grid(True, which='both', linestyle='--', alpha=0.7)
@@ -263,17 +263,17 @@ def main():
             ax.set_xticks(xticks)
 
         axes[-1].set_xlabel('Quarter')
-        plt.xticks(rotation=45, fontsize=8)
+        plt.xticks(rotation=45, fontsize=12)
         
         n = len(pivot_df.index)
         if n > 20:
             step = max(1, n // 15)
             axes[-1].set_xticks(range(0, n, step))
-            axes[-1].set_xticklabels([format_quarter_label(q) for q in pivot_df.index[::step]], rotation=45, fontsize=8)
+            axes[-1].set_xticklabels([format_quarter_label(q) for q in pivot_df.index[::step]], rotation=45, fontsize=12)
         else:
-            axes[-1].set_xticklabels([format_quarter_label(q) for q in pivot_df.index], rotation=45, fontsize=8)
+            axes[-1].set_xticklabels([format_quarter_label(q) for q in pivot_df.index], rotation=45, fontsize=12)
 
-        fig.suptitle('Quarterly Housing Loan Default Rate - Major Cities\n(主要城市購置住宅貸款違約率)', fontsize=16)
+        fig.suptitle('Quarterly Housing Loan Default Rate - Major Cities\n(主要城市購置住宅貸款違約率)', fontsize=20)
         plt.tight_layout(rect=[0, 0.03, 1, 0.97])
         
         svg_path = os.path.join(SVG_DIR, "major_cities_default_rate.svg")
