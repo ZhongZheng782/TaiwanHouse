@@ -189,7 +189,15 @@ def main():
             match = re.match(r'(\d+)Q(\d+)', str(q_str))
             if match:
                 return int(match.group(1)), int(match.group(2))
-            return 0, 0 
+            return 0, 0
+        
+        def format_quarter_label(q_str):
+            match = re.match(r'(\d+)Q(\d+)', str(q_str))
+            if match:
+                minguo_year = int(match.group(1))
+                quarter = int(match.group(2))
+                return f"{minguo_year + 1911}Q{quarter}"
+            return q_str # Return original string if format doesn't match
 
         sorted_index = sorted(pivot_df.index, key=parse_quarter)
         pivot_df = pivot_df.reindex(sorted_index)
@@ -261,7 +269,9 @@ def main():
         if n > 20:
             step = max(1, n // 15)
             axes[-1].set_xticks(range(0, n, step))
-            axes[-1].set_xticklabels(pivot_df.index[::step], rotation=45, fontsize=8)
+            axes[-1].set_xticklabels([format_quarter_label(q) for q in pivot_df.index[::step]], rotation=45, fontsize=8)
+        else:
+            axes[-1].set_xticklabels([format_quarter_label(q) for q in pivot_df.index], rotation=45, fontsize=8)
 
         fig.suptitle('Quarterly Housing Loan Default Rate - Major Cities\n(主要城市購置住宅貸款違約率)', fontsize=16)
         plt.tight_layout(rect=[0, 0.03, 1, 0.97])
