@@ -218,6 +218,7 @@ def main():
             plt.rcParams['font.sans-serif'] = ['sans-serif'] # Fallback to generic sans-serif
 
         plt.rcParams['axes.unicode_minus'] = False
+        print(f"Matplotlib is using font(s) for sans-serif: {plt.rcParams['font.sans-serif']}")
         
         # Use a colormap that can handle more unique values
         colors = plt.cm.tab20(range(len(cities)))

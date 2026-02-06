@@ -42,7 +42,24 @@
 
 *   **技術要求：** 腳本需安裝 `selenium` 與 `webdriver-manager` 以處理動態下載。
 
-*   **字體要求：** 為確保 SVG 圖表中的中文能正常顯示，請確認系統已安裝支援繁體中文的字體（例如：Noto Sans CJK TC 或 Microsoft JhengHei）。若運行環境缺少這些字體，圖表中的中文字符可能無法正確顯示。
+*   **字體要求：** 為確保 SVG 圖表中的中文能正常顯示，請確認系統已安裝支援繁體中文的字體。若運行環境缺少這些字體，圖表中的中文字符可能無法正確顯示。
+
+    **建議字體：**
+    *   **跨平台：** Noto Sans CJK TC (Google Fonts)
+    *   **Windows：** Microsoft JhengHei (微軟正黑體)
+    *   **macOS：** 蘋方 (PingFang TC)
+
+    **安裝與配置步驟：**
+    1.  **安裝字體：** 根據您的作業系統，下載並安裝上述推薦的字體之一。
+    2.  **清除 Matplotlib 字體快取：**
+        如果安裝字體後中文仍無法顯示，請嘗試清除 Matplotlib 的字體快取：
+        ```bash
+        rm -rf ~/.cache/matplotlib
+        # 或
+        # python -c "import matplotlib; matplotlib.font_manager._rebuild()"
+        ```
+    3.  **重新執行腳本：** 清除快取後，重新執行 `python3 scripts/fetch_and_plot.py`。
+    4.  **檢查程式輸出：** 程式執行時會印出 `Matplotlib is using font(s) for sans-serif: [...]`，請確認其中包含了您安裝的中文繁體字體名稱。
 
 
 
