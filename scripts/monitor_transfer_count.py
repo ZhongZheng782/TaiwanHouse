@@ -9,6 +9,7 @@ import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import pandas as pd
 import requests
+import urllib3
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -47,6 +48,7 @@ def setup_driver():
         "Chrome/124.0.0.0 Safari/537.36"
     )
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_argument("--ignore-certificate-errors")
 
     prefs = {
         "download.default_directory": DOWNLOAD_DIR,
@@ -57,7 +59,11 @@ def setup_driver():
     chrome_options.add_experimental_option("prefs", prefs)
 
     service = Service(ChromeDriverManager().install())
-    return webdriver.Chrome(service=service, options=chrome_options)
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+        "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+    })
+    return driver
 
 
 def clear_download_dir():
@@ -132,9 +138,16 @@ def download_direct_export():
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/124.0.0.0 Safari/537.36"
-        )
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Referer": BASE_URL,
     }
-    response = requests.get(DIRECT_EXPORT_URL, timeout=60, headers=headers)
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    session = requests.Session()
+    # Visit the main page first to get cookies
+    session.get(BASE_URL, timeout=30, headers=headers, verify=False)
+    response = session.get(DIRECT_EXPORT_URL, timeout=60, headers=headers, verify=False)
     response.raise_for_status()
 
     preview = response.content[:1024].decode("utf-8", errors="ignore").lower()
@@ -766,7 +779,6 @@ def main():
             print(f"警告：無法下載且本地也沒有既有 CSV。{error_summary}")
             write_unavailable_report(error_summary)
             write_unavailable_svg(error_summary)
-            update_readme_timestamp()
             return
         print(f"下載失敗，改用既有資料：{e}")
 
