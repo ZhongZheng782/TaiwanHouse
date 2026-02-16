@@ -34,38 +34,34 @@ jobs:
     - name: Diagnose network access to data source
       continue-on-error: true
       run: |
-        echo "## Network Diagnostics" >> $GITHUB_STEP_SUMMARY
-        echo "### Runner IP" >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
-        curl -s https://ifconfig.me >> $GITHUB_STEP_SUMMARY
-        echo '' >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo "=== Runner IP ==="
+        RUNNER_IP=$(curl -s https://ifconfig.me)
+        echo "$RUNNER_IP"
 
-        echo "### curl (no headers)" >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo ""
+        echo "=== curl (no headers) ==="
         HTTP_CODE=$(curl -s -o /tmp/resp_bare.html -w "%{http_code}" "https://pip.moi.gov.tw/Publicize/Info/E3030" 2>&1)
-        echo "HTTP status: $HTTP_CODE" >> $GITHUB_STEP_SUMMARY
-        head -c 500 /tmp/resp_bare.html >> $GITHUB_STEP_SUMMARY
-        echo '' >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo "HTTP status: $HTTP_CODE"
+        echo "Response body (first 500 chars):"
+        head -c 500 /tmp/resp_bare.html
+        echo ""
 
-        echo "### curl (with browser headers)" >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo ""
+        echo "=== curl (with browser headers) ==="
         HTTP_CODE=$(curl -s -o /tmp/resp_ua.html -w "%{http_code}" \
           -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" \
           -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" \
           -H "Accept-Language: zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7" \
           "https://pip.moi.gov.tw/Publicize/Info/E3030" 2>&1)
-        echo "HTTP status: $HTTP_CODE" >> $GITHUB_STEP_SUMMARY
-        head -c 500 /tmp/resp_ua.html >> $GITHUB_STEP_SUMMARY
-        echo '' >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo "HTTP status: $HTTP_CODE"
+        echo "Response body (first 500 chars):"
+        head -c 500 /tmp/resp_ua.html
+        echo ""
 
-        echo "### Response headers" >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo ""
+        echo "=== Response headers ==="
         curl -sI -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
-          "https://pip.moi.gov.tw/Publicize/Info/E3030" 2>&1 | head -20 >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
+          "https://pip.moi.gov.tw/Publicize/Info/E3030" 2>&1 | head -20
 
     - name: Run update script (housing loan default rate)
       id: fetch_plot
