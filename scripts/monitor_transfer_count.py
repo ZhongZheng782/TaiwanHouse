@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import pandas as pd
+import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -16,7 +17,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
 BASE_URL = "https://pip.moi.gov.tw/Publicize/Info/E3030"
-TARGET_DATASET_NAME = "全台建物買賣移轉棟數"
+TARGET_DATASET_NAME = "建物買賣移轉登記棟數"
+DIRECT_EXPORT_URL = "https://pip.moi.gov.tw/Publicize/Info/E3030?do=export&t=4&k=1&n=3"
 
 PROJECT_ROOT = os.getcwd()
 DATA_DIR = os.path.join(PROJECT_ROOT, "data", "csv")
@@ -108,6 +110,42 @@ def detect_period_column(columns):
         if any(keyword in lower for keyword in keywords):
             return col
     return columns[0]
+
+
+def guess_extension(headers):
+    content_type = (headers.get("Content-Type") or "").lower()
+    content_disposition = (headers.get("Content-Disposition") or "").lower()
+
+    if "xlsx" in content_type or ".xlsx" in content_disposition:
+        return ".xlsx"
+    if "excel" in content_type or ".xls" in content_disposition:
+        return ".xls"
+    if "csv" in content_type or ".csv" in content_disposition:
+        return ".csv"
+    return ".csv"
+
+
+def download_direct_export():
+    print(f"嘗試直連下載：{DIRECT_EXPORT_URL}")
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        )
+    }
+    response = requests.get(DIRECT_EXPORT_URL, timeout=60, headers=headers)
+    response.raise_for_status()
+
+    preview = response.content[:1024].decode("utf-8", errors="ignore").lower()
+    if "<html" in preview and ("request rejected" in preview or "access denied" in preview):
+        raise RuntimeError("直連匯出網址被來源網站拒絕。")
+
+    ext = guess_extension(response.headers)
+    file_path = os.path.join(DOWNLOAD_DIR, f"direct_export{ext}")
+    with open(file_path, "wb") as f:
+        f.write(response.content)
+    return file_path
 
 
 def detect_region_column(columns):
@@ -302,6 +340,16 @@ def merge_or_replace_source(downloaded_file, output_file):
 
 
 def download_csv():
+    clear_download_dir()
+    try:
+        downloaded_file = download_direct_export()
+        merge_or_replace_source(downloaded_file, CSV_OUTPUT)
+        print(f"CSV 已更新（直連）：{CSV_OUTPUT}")
+        shutil.rmtree(DOWNLOAD_DIR)
+        return
+    except Exception as e:
+        print(f"直連下載失敗，改用網頁抓取：{e}")
+
     last_error = None
     for attempt in range(1, 4):
         driver = None
