@@ -258,13 +258,7 @@ def download_csv():
         driver = setup_driver()
         print(f"前往資料來源：{BASE_URL}")
         driver.get(BASE_URL)
-        WebDriverWait(driver, 30).until(
-            lambda d: any(
-                ("csv" in (link.text or "").lower())
-                or ("csv" in (link.get_attribute("href") or "").lower())
-                for link in d.find_elements(By.TAG_NAME, "a")
-            )
-        )
+        WebDriverWait(driver, 20).until(lambda d: d.find_elements(By.TAG_NAME, "a"))
 
         target_link = find_download_link(driver)
         if target_link is None:
@@ -468,6 +462,23 @@ def write_monitor_report(series_df):
     print(f"監控報告已輸出：{REPORT_OUTPUT}")
 
 
+def write_unavailable_report(error_message):
+    now = datetime.now(ZoneInfo("Asia/Taipei")).strftime("%Y-%m-%d %H:%M:%S CST")
+    content = [
+        "# 全台建物買賣移轉棟數監控",
+        "",
+        f"- 更新時間：{now}",
+        "- 狀態：更新失敗（使用既有資料也不可用）",
+        f"- 錯誤訊息：{error_message}",
+        "",
+        "## 資料來源",
+        f"- 內政部不動產資訊平台：{BASE_URL}",
+    ]
+    with open(REPORT_OUTPUT, "w", encoding="utf-8") as f:
+        f.write("\n".join(content) + "\n")
+    print(f"監控報告已輸出（失敗狀態）：{REPORT_OUTPUT}")
+
+
 def update_readme_timestamp():
     readme_path = os.path.join(PROJECT_ROOT, "README.md")
     if not os.path.exists(readme_path):
@@ -547,7 +558,9 @@ def main():
         download_csv()
     except Exception as e:
         if not os.path.exists(CSV_OUTPUT):
-            raise RuntimeError("無法下載且本地也沒有既有 CSV，監控流程中止。") from e
+            print(f"警告：無法下載且本地也沒有既有 CSV。{e}")
+            write_unavailable_report(str(e))
+            return
         print(f"下載失敗，改用既有資料：{e}")
 
     df = read_csv_auto(CSV_OUTPUT)
