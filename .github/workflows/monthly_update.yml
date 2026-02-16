@@ -42,6 +42,12 @@ jobs:
           fi
         done
 
+        # Install Chrome runtime dependencies for Docker containers
+        sudo -E apt-get install -f -y -o DPkg::Lock::Timeout=120 \
+          libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+          libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 \
+          libpango-1.0-0 libcairo2 libasound2 2>&1 || true
+
         if ! command -v google-chrome &> /dev/null; then
           echo "Chrome not found, installing..."
           wget -q -O /var/tmp/google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
@@ -52,6 +58,10 @@ jobs:
         else
           echo "Chrome already installed: $(google-chrome --version)"
         fi
+
+        # Verify Chrome can actually run
+        google-chrome --headless --no-sandbox --disable-gpu --dump-dom about:blank 2>&1 | head -5 || echo "WARNING: Chrome headless test failed"
+
         sudo -E apt-get install -y -o DPkg::Lock::Timeout=120 fonts-noto-cjk fontconfig 2>/dev/null || true
         fc-cache -f -v 2>/dev/null || true
 

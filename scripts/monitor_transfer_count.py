@@ -173,9 +173,14 @@ def download_direct_export():
     response = session.get(DIRECT_EXPORT_URL, timeout=60, headers=headers, verify=False)
     response.raise_for_status()
 
+    content_type = (response.headers.get("Content-Type") or "").lower()
     preview = response.content[:1024].decode("utf-8", errors="ignore").lower()
-    if "<html" in preview and ("request rejected" in preview or "access denied" in preview):
-        raise RuntimeError("直連匯出網址被來源網站拒絕。")
+    print(f"直連回應 Content-Type: {content_type}, 大小: {len(response.content)} bytes")
+    print(f"直連回應前 200 字元: {preview[:200]}")
+    if "<html" in preview:
+        if "request rejected" in preview or "access denied" in preview:
+            raise RuntimeError("直連匯出網址被來源網站拒絕。")
+        raise RuntimeError("直連匯出回傳 HTML 而非資料檔。")
 
     ext = guess_extension(response.headers)
     file_path = os.path.join(DOWNLOAD_DIR, f"direct_export{ext}")
