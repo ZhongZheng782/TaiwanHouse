@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+import sys
 import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -16,6 +17,12 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
+
+try:
+    from selenium_stealth import stealth
+    HAS_STEALTH = True
+except ImportError:
+    HAS_STEALTH = False
 
 BASE_URL = "https://pip.moi.gov.tw/Publicize/Info/E3030"
 TARGET_DATASET_NAME = "建物買賣移轉登記棟數"
@@ -60,9 +67,22 @@ def setup_driver():
 
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=chrome_options)
-    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-        "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-    })
+
+    if HAS_STEALTH:
+        stealth(
+            driver,
+            languages=["zh-TW", "zh", "en-US", "en"],
+            vendor="Google Inc.",
+            platform="Win32",
+            webgl_vendor="Intel Inc.",
+            renderer="Intel Iris OpenGL Engine",
+            fix_hairline=True,
+        )
+    else:
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+        })
+
     return driver
 
 
@@ -771,22 +791,29 @@ def update_readme_timestamp():
 
 
 def main():
+    fresh_download = False
     try:
         download_csv()
+        fresh_download = True
     except Exception as e:
         if not os.path.exists(CSV_OUTPUT):
             error_summary = summarize_error(e)
-            print(f"警告：無法下載且本地也沒有既有 CSV。{error_summary}")
+            print(f"錯誤：無法下載且本地也沒有既有 CSV。{error_summary}")
             write_unavailable_report(error_summary)
             write_unavailable_svg(error_summary)
-            return
+            sys.exit(2)
         print(f"下載失敗，改用既有資料：{e}")
 
     df = read_csv_auto(CSV_OUTPUT)
     series_df = build_taiwan_series(df)
     plot_series(series_df)
     write_monitor_report(series_df)
-    update_readme_timestamp()
+
+    if fresh_download:
+        update_readme_timestamp()
+    else:
+        print("使用既有資料，不更新 README 時間戳。")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

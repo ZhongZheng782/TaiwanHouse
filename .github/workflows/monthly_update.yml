@@ -1,4 +1,4 @@
-﻿name: Monthly Data Update
+name: Monthly Data Update
 
 on:
   schedule:
@@ -23,7 +23,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install pandas matplotlib requests selenium webdriver-manager pytz openpyxl xlrd
+        pip install pandas matplotlib requests selenium webdriver-manager pytz openpyxl xlrd selenium-stealth
 
     - name: Install Chrome
       run: |
@@ -31,11 +31,29 @@ jobs:
         sudo apt-get install -y google-chrome-stable fonts-noto-cjk fontconfig
         fc-cache -f -v
 
-    - name: Run update script
+    - name: Run update script (housing loan default rate)
+      id: fetch_plot
+      continue-on-error: true
       run: python scripts/fetch_and_plot.py
 
     - name: Run transfer monitor script
+      id: transfer_monitor
+      continue-on-error: true
       run: python scripts/monitor_transfer_count.py
+
+    - name: Report script results
+      run: |
+        echo "## Script Results" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ steps.fetch_plot.outcome }}" = "success" ]; then
+          echo "- fetch_and_plot.py: ✅ Fresh data downloaded" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- fetch_and_plot.py: ⚠️ Failed (exit code ${{ steps.fetch_plot.outputs.exit-code || 'non-zero' }}) — used cached data or no data available" >> $GITHUB_STEP_SUMMARY
+        fi
+        if [ "${{ steps.transfer_monitor.outcome }}" = "success" ]; then
+          echo "- monitor_transfer_count.py: ✅ Fresh data downloaded" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- monitor_transfer_count.py: ⚠️ Failed (exit code ${{ steps.transfer_monitor.outputs.exit-code || 'non-zero' }}) — used cached data or no data available" >> $GITHUB_STEP_SUMMARY
+        fi
 
     - name: Commit and Push changes
       run: |
@@ -48,3 +66,9 @@ jobs:
           git commit -m "data: monthly update of housing visualizations"
           git push
         fi
+
+    - name: Fail workflow if both scripts failed completely
+      if: steps.fetch_plot.outcome == 'failure' && steps.transfer_monitor.outcome == 'failure'
+      run: |
+        echo "::error::Both data update scripts failed. WAF may be blocking GitHub Actions IPs."
+        exit 1
