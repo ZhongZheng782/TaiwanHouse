@@ -44,8 +44,12 @@ for directory in (DATA_DIR, SVG_DIR, REPORT_DIR, DOWNLOAD_DIR):
 
 
 def setup_driver():
+    # Docker containers may restrict /tmp for Chrome; use /var/tmp instead
+    os.environ.setdefault("TMPDIR", "/var/tmp")
+
     chrome_options = Options()
     chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--user-data-dir=/var/tmp/chrome-data-monitor")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
