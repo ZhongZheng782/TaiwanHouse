@@ -334,20 +334,31 @@ def build_taiwan_series(df):
 def configure_cjk_font():
     preferred_fonts = [
         "Noto Sans CJK TC",
+        "Noto Sans TC",
+        "Noto Sans CJK JP",
+        "Noto Sans CJK SC",
         "PingFang TC",
         "Microsoft JhengHei",
         "Arial Unicode MS",
         "WenQuanYi Micro Hei",
     ]
 
+    selected_font = None
     for font_name in preferred_fonts:
         if any(font_name in font.name for font in fm.fontManager.ttflist):
-            plt.rcParams["font.sans-serif"] = [font_name, "sans-serif"]
+            selected_font = font_name
             break
+
+    if selected_font:
+        plt.rcParams["font.family"] = "sans-serif"
+        plt.rcParams["font.sans-serif"] = [selected_font, "sans-serif"]
+        print(f"使用字體：{selected_font}")
     else:
         plt.rcParams["font.sans-serif"] = ["sans-serif"]
         print("警告：找不到適用的中文字體，圖上的中文可能無法正確顯示。")
 
+    # Convert text to paths to avoid client-side missing-font rendering issues in SVG viewers.
+    plt.rcParams["svg.fonttype"] = "path"
     plt.rcParams["axes.unicode_minus"] = False
 
 
