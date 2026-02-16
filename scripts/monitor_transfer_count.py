@@ -152,18 +152,57 @@ def parse_period(raw):
 
 def find_download_link(driver):
     links = driver.find_elements(By.TAG_NAME, "a")
+    best_link = None
+    best_score = -1
+    csv_candidates = []
 
     for link in links:
         title = (link.get_attribute("title") or "").strip()
-        text = (link.text or "").strip().upper()
-        if TARGET_DATASET_NAME in title and "CSV" in text:
-            return link
+        text = (link.text or "").strip()
+        href = (link.get_attribute("href") or "").strip()
+        aria = (link.get_attribute("aria-label") or "").strip()
 
-    for link in links:
-        title = (link.get_attribute("title") or "").strip()
-        text = (link.text or "").strip().upper()
-        if "建物買賣移轉棟數" in title and "CSV" in text:
-            return link
+        try:
+            row_text = link.find_element(By.XPATH, "./ancestor::tr").text.strip()
+        except Exception:
+            row_text = ""
+
+        is_csv = ("csv" in text.lower()) or (".csv" in href.lower()) or ("csv" in href.lower())
+        if not is_csv:
+            continue
+
+        haystack = " ".join([title, text, href, aria, row_text])
+        csv_candidates.append(haystack)
+
+        score = 0
+        if TARGET_DATASET_NAME in haystack:
+            score += 100
+        if "建物買賣移轉棟數" in haystack:
+            score += 60
+        if "買賣移轉" in haystack:
+            score += 30
+        if "建物" in haystack:
+            score += 15
+        if "移轉" in haystack:
+            score += 15
+        if "棟數" in haystack:
+            score += 15
+        if "全台" in haystack or "全國" in haystack:
+            score += 8
+
+        if score > best_score:
+            best_score = score
+            best_link = link
+
+    if best_link is not None and best_score >= 30:
+        return best_link
+
+    if csv_candidates:
+        print("未匹配到目標資料，頁面中的 CSV 候選項目如下（前 10 筆）：")
+        for item in csv_candidates[:10]:
+            print(f"- {item}")
+    else:
+        print("頁面中沒有偵測到 CSV 連結。")
 
     return None
 
@@ -219,7 +258,13 @@ def download_csv():
         driver = setup_driver()
         print(f"前往資料來源：{BASE_URL}")
         driver.get(BASE_URL)
-        WebDriverWait(driver, 20).until(lambda d: d.find_elements(By.TAG_NAME, "a"))
+        WebDriverWait(driver, 30).until(
+            lambda d: any(
+                ("csv" in (link.text or "").lower())
+                or ("csv" in (link.get_attribute("href") or "").lower())
+                for link in d.find_elements(By.TAG_NAME, "a")
+            )
+        )
 
         target_link = find_download_link(driver)
         if target_link is None:
