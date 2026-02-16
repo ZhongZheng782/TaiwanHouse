@@ -28,14 +28,24 @@ jobs:
     - name: Install Chrome
       env:
         DEBIAN_FRONTEND: noninteractive
+        TMPDIR: /var/tmp
       run: |
+        # Wait for any existing apt/dpkg locks to be released
+        for i in $(seq 1 30); do
+          if ! sudo flock -n /var/lib/dpkg/lock-frontend true 2>/dev/null; then
+            echo "Waiting for dpkg lock (attempt $i/30)..."
+            sleep 2
+          else
+            break
+          fi
+        done
+
         if ! command -v google-chrome &> /dev/null; then
           echo "Chrome not found, installing..."
-          sudo apt-get update -qq
-          wget -q -O /tmp/google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo dpkg -i /tmp/google-chrome.deb 2>&1 || true
+          wget -q -O /var/tmp/google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo dpkg -i /var/tmp/google-chrome.deb 2>&1 || true
           sudo apt-get install -f -y 2>&1
-          rm -f /tmp/google-chrome.deb
+          rm -f /var/tmp/google-chrome.deb
           google-chrome --version
         else
           echo "Chrome already installed: $(google-chrome --version)"
