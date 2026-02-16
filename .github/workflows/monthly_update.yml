@@ -89,26 +89,34 @@ jobs:
 
     - name: Run update script (housing loan default rate)
       id: fetch_plot
+      run: |
+        python scripts/fetch_and_plot.py; echo "FETCH_EXIT=$?" >> $GITHUB_ENV
       continue-on-error: true
-      run: python scripts/fetch_and_plot.py
 
     - name: Run transfer monitor script
       id: transfer_monitor
+      run: |
+        python scripts/monitor_transfer_count.py; echo "MONITOR_EXIT=$?" >> $GITHUB_ENV
       continue-on-error: true
-      run: python scripts/monitor_transfer_count.py
 
     - name: Report script results
       run: |
         echo "## Script Results" >> $GITHUB_STEP_SUMMARY
-        if [ "${{ steps.fetch_plot.outcome }}" = "success" ]; then
+        echo "fetch_and_plot.py exit code: $FETCH_EXIT"
+        echo "monitor_transfer_count.py exit code: $MONITOR_EXIT"
+        if [ "$FETCH_EXIT" = "0" ]; then
           echo "- fetch_and_plot.py: ✅ Fresh data downloaded" >> $GITHUB_STEP_SUMMARY
+        elif [ "$FETCH_EXIT" = "1" ]; then
+          echo "- fetch_and_plot.py: ⚠️ Used cached data (download failed but plot generated)" >> $GITHUB_STEP_SUMMARY
         else
-          echo "- fetch_and_plot.py: ⚠️ Failed (exit code ${{ steps.fetch_plot.outputs.exit-code || 'non-zero' }}) — used cached data or no data available" >> $GITHUB_STEP_SUMMARY
+          echo "- fetch_and_plot.py: ❌ Complete failure (exit code $FETCH_EXIT)" >> $GITHUB_STEP_SUMMARY
         fi
-        if [ "${{ steps.transfer_monitor.outcome }}" = "success" ]; then
+        if [ "$MONITOR_EXIT" = "0" ]; then
           echo "- monitor_transfer_count.py: ✅ Fresh data downloaded" >> $GITHUB_STEP_SUMMARY
+        elif [ "$MONITOR_EXIT" = "1" ]; then
+          echo "- monitor_transfer_count.py: ⚠️ Used cached data (download failed but plot generated)" >> $GITHUB_STEP_SUMMARY
         else
-          echo "- monitor_transfer_count.py: ⚠️ Failed (exit code ${{ steps.transfer_monitor.outputs.exit-code || 'non-zero' }}) — used cached data or no data available" >> $GITHUB_STEP_SUMMARY
+          echo "- monitor_transfer_count.py: ❌ Complete failure (exit code $MONITOR_EXIT)" >> $GITHUB_STEP_SUMMARY
         fi
 
     - name: Commit and Push changes
@@ -124,7 +132,10 @@ jobs:
         fi
 
     - name: Fail workflow if both scripts failed completely
-      if: steps.fetch_plot.outcome == 'failure' && steps.transfer_monitor.outcome == 'failure'
+      if: always()
       run: |
-        echo "::error::Both data update scripts failed. WAF may be blocking GitHub Actions IPs."
-        exit 1
+        # Exit code 0 = fresh data, 1 = used cache (OK), 2 = complete failure
+        if [ "$FETCH_EXIT" -ge 2 ] && [ "$MONITOR_EXIT" -ge 2 ]; then
+          echo "::error::Both data update scripts failed completely (exit codes: fetch=$FETCH_EXIT, monitor=$MONITOR_EXIT)"
+          exit 1
+        fi
