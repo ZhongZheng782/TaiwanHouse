@@ -332,6 +332,11 @@ def build_taiwan_series(df):
 
 
 def configure_cjk_font():
+    try:
+        fm.fontManager = fm._load_fontmanager(try_read_cache=False)
+    except Exception:
+        pass
+
     preferred_fonts = [
         "Noto Sans CJK TC",
         "Noto Sans TC",
@@ -343,27 +348,36 @@ def configure_cjk_font():
         "WenQuanYi Micro Hei",
     ]
 
+    available_fonts = {font.name for font in fm.fontManager.ttflist}
     selected_font = None
     for font_name in preferred_fonts:
-        if any(font_name in font.name for font in fm.fontManager.ttflist):
+        if font_name in available_fonts:
             selected_font = font_name
             break
 
+    if selected_font is None:
+        for font_name in available_fonts:
+            if ("Noto Sans CJK" in font_name) or ("Noto Serif CJK" in font_name):
+                selected_font = font_name
+                break
+
     if selected_font:
         plt.rcParams["font.family"] = "sans-serif"
-        plt.rcParams["font.sans-serif"] = [selected_font, "sans-serif"]
+        plt.rcParams["font.sans-serif"] = [selected_font, "DejaVu Sans"]
         print(f"使用字體：{selected_font}")
     else:
-        plt.rcParams["font.sans-serif"] = ["sans-serif"]
-        print("警告：找不到適用的中文字體，圖上的中文可能無法正確顯示。")
+        plt.rcParams["font.family"] = "sans-serif"
+        plt.rcParams["font.sans-serif"] = ["DejaVu Sans"]
+        print("警告：找不到 CJK 字體，將使用英文字樣 fallback。")
 
     # Convert text to paths to avoid client-side missing-font rendering issues in SVG viewers.
     plt.rcParams["svg.fonttype"] = "path"
     plt.rcParams["axes.unicode_minus"] = False
+    return selected_font is not None
 
 
 def plot_series(series_df):
-    configure_cjk_font()
+    has_cjk = configure_cjk_font()
 
     labels = series_df["period_label"].tolist()
     values = series_df["value"].tolist()
@@ -373,9 +387,14 @@ def plot_series(series_df):
     ax.plot(x, values, color="#1f6aa5", linewidth=2.2, marker="o", markersize=3.8)
     ax.fill_between(x, values, color="#9ec5e5", alpha=0.35)
 
-    ax.set_title("全台建物買賣移轉棟數監控趨勢", fontsize=20, pad=16)
-    ax.set_xlabel("期別", fontsize=14)
-    ax.set_ylabel("棟數", fontsize=14)
+    if has_cjk:
+        ax.set_title("全台建物買賣移轉棟數監控趨勢", fontsize=20, pad=16)
+        ax.set_xlabel("期別", fontsize=14)
+        ax.set_ylabel("棟數", fontsize=14)
+    else:
+        ax.set_title("Taiwan Building Transfer Count Trend", fontsize=20, pad=16)
+        ax.set_xlabel("Period", fontsize=14)
+        ax.set_ylabel("Count", fontsize=14)
     ax.grid(True, linestyle="--", alpha=0.4)
 
     if len(x) > 24:
@@ -389,8 +408,12 @@ def plot_series(series_df):
 
     latest_value = int(values[-1])
     latest_label = labels[-1]
+    if has_cjk:
+        latest_text = f"最新：{latest_label} / {latest_value:,} 棟"
+    else:
+        latest_text = f"Latest: {latest_label} / {latest_value:,}"
     ax.annotate(
-        f"最新：{latest_label} / {latest_value:,} 棟",
+        latest_text,
         xy=(x[-1], values[-1]),
         xytext=(-10, 12),
         textcoords="offset points",
@@ -499,13 +522,22 @@ def summarize_error(error):
 
 
 def write_unavailable_svg(error_message):
-    configure_cjk_font()
+    has_cjk = configure_cjk_font()
     fig, ax = plt.subplots(figsize=(12, 6))
     ax.axis("off")
+    if has_cjk:
+        title_text = "全台建物買賣移轉棟數"
+        desc_text = "目前無法取得資料，已保留上次可用輸出或等待下次更新。"
+        err_text = f"錯誤訊息: {error_message}"
+    else:
+        title_text = "Taiwan Building Transfer Count"
+        desc_text = "Data is temporarily unavailable. Using fallback output."
+        err_text = f"Error: {error_message}"
+
     ax.text(
         0.5,
         0.65,
-        "全台建物買賣移轉棟數",
+        title_text,
         ha="center",
         va="center",
         fontsize=24,
@@ -515,7 +547,7 @@ def write_unavailable_svg(error_message):
     ax.text(
         0.5,
         0.48,
-        "目前無法取得資料，已保留上次可用輸出或等待下次更新。",
+        desc_text,
         ha="center",
         va="center",
         fontsize=14,
@@ -524,7 +556,7 @@ def write_unavailable_svg(error_message):
     ax.text(
         0.5,
         0.34,
-        f"錯誤訊息: {error_message}",
+        err_text,
         ha="center",
         va="center",
         fontsize=11,
